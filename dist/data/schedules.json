@@ -1,0 +1,124 @@
+{
+  "schedules": [
+    {
+      "id": "sch-001",
+      "userId": "res-001",
+      "dutyTypeId": "guard-001",
+      "startTime": "2025-06-24T06:00:00Z",
+      "endTime": "2025-06-25T06:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "cmdr-001",
+      "assignedAt": "2025-06-23T15:00:00Z",
+      "notes": "Gate 1 checkpoint duty",
+      "isOverride": false
+    },
+    {
+      "id": "sch-002",
+      "userId": "res-003",
+      "dutyTypeId": "guard-001",
+      "startTime": "2025-06-24T06:00:00Z",
+      "endTime": "2025-06-25T06:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "cmdr-001",
+      "assignedAt": "2025-06-23T15:00:00Z",
+      "notes": "Gate 1 checkpoint duty",
+      "isOverride": false
+    },
+    {
+      "id": "sch-003",
+      "userId": "res-002",
+      "dutyTypeId": "kitchen-001",
+      "startTime": "2025-06-24T05:00:00Z",
+      "endTime": "2025-06-24T13:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "duty-001",
+      "assignedAt": "2025-06-23T14:30:00Z",
+      "notes": "Breakfast preparation",
+      "isOverride": false
+    },
+    {
+      "id": "sch-004",
+      "userId": "res-004",
+      "dutyTypeId": "maintenance-001",
+      "startTime": "2025-06-24T08:00:00Z",
+      "endTime": "2025-06-24T16:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "nco-001",
+      "assignedAt": "2025-06-23T16:00:00Z",
+      "notes": "Vehicle maintenance",
+      "isOverride": false
+    },
+    {
+      "id": "sch-005",
+      "userId": "res-001",
+      "dutyTypeId": "leave-001",
+      "startTime": "2025-06-25T18:00:00Z",
+      "endTime": "2025-06-26T18:00:00Z",
+      "status": "REQUESTED",
+      "assignedBy": "res-001",
+      "assignedAt": "2025-06-23T10:00:00Z",
+      "notes": "Family event",
+      "isOverride": false
+    },
+    {
+      "id": "sch-006",
+      "userId": "res-002",
+      "dutyTypeId": "kitchen-001",
+      "startTime": "2025-06-25T17:00:00Z",
+      "endTime": "2025-06-26T01:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "duty-001",
+      "assignedAt": "2025-06-23T17:00:00Z",
+      "notes": "Dinner service",
+      "isOverride": false
+    },
+    {
+      "id": "sch-007",
+      "userId": "admin-001",
+      "dutyTypeId": "guard-001",
+      "startTime": "2025-06-25T06:00:00Z",
+      "endTime": "2025-06-25T18:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "cmdr-001",
+      "assignedAt": "2025-06-23T19:00:00Z",
+      "notes": "Command post guard duty",
+      "isOverride": false
+    },
+    {
+      "id": "sch-008",
+      "userId": "admin-001",
+      "dutyTypeId": "maintenance-001",
+      "startTime": "2025-06-26T08:00:00Z",
+      "endTime": "2025-06-26T16:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "cmdr-001",
+      "assignedAt": "2025-06-23T19:00:00Z",
+      "notes": "Equipment maintenance and inspection",
+      "isOverride": false
+    },
+    {
+      "id": "sch-009",
+      "userId": "admin-001",
+      "dutyTypeId": "admin-001",
+      "startTime": "2025-06-27T20:00:00Z",
+      "endTime": "2025-06-28T08:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "cmdr-001",
+      "assignedAt": "2025-06-23T19:00:00Z",
+      "notes": "Night shift administrative duty",
+      "isOverride": false
+    },
+    {
+      "id": "sch-010",
+      "userId": "admin-001",
+      "dutyTypeId": "kitchen-001",
+      "startTime": "2025-06-29T05:00:00Z",
+      "endTime": "2025-06-29T13:00:00Z",
+      "status": "ASSIGNED",
+      "assignedBy": "duty-001",
+      "assignedAt": "2025-06-23T19:00:00Z",
+      "notes": "Weekend kitchen duty",
+      "isOverride": false
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "availability": [
+    {
+      "id": "avail-001",
+      "userId": "res-001",
+      "startTime": "2025-06-24T00:00:00Z",
+      "endTime": "2025-06-27T23:59:59Z",
+      "status": "AVAILABLE",
+      "notes": "Available for all duties",
+      "updatedAt": "2025-06-23T12:00:00Z"
+    },
+    {
+      "id": "avail-002",
+      "userId": "res-002",
+      "startTime": "2025-06-24T00:00:00Z",
+      "endTime": "2025-06-27T23:59:59Z",
+      "status": "AVAILABLE",
+      "notes": "Prefer kitchen duties",
+      "updatedAt": "2025-06-23T11:30:00Z"
+    },
+    {
+      "id": "avail-003",
+      "userId": "res-003",
+      "startTime": "2025-06-24T00:00:00Z",
+      "endTime": "2025-06-25T12:00:00Z",
+      "status": "LIMITED",
+      "notes": "Medical appointment on 25th afternoon",
+      "updatedAt": "2025-06-23T09:00:00Z"
+    },
+    {
+      "id": "avail-004",
+      "userId": "res-004",
+      "startTime": "2025-06-24T08:00:00Z",
+      "endTime": "2025-06-27T23:59:59Z",
+      "status": "AVAILABLE",
+      "notes": "Cannot do night shifts",
+      "updatedAt": "2025-06-23T10:15:00Z"
+    },
+    {
+      "id": "avail-005",
+      "userId": "nco-001",
+      "startTime": "2025-06-24T00:00:00Z",
+      "endTime": "2025-06-27T23:59:59Z",
+      "status": "AVAILABLE",
+      "notes": "Available for supervision duties",
+      "updatedAt": "2025-06-23T13:00:00Z"
+    }
+  ]
+}
