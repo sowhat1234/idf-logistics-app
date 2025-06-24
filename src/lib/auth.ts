@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   OVERRIDE_CONSTRAINTS: 'override_constraints',
   VIEW_ALL_SCHEDULES: 'view_all_schedules',
   EDIT_OWN_AVAILABILITY: 'edit_own_availability',
+  SYNC_GOOGLE_SHEETS: 'sync_google_sheets',
 } as const;
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -23,6 +24,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.OVERRIDE_CONSTRAINTS,
     PERMISSIONS.VIEW_ALL_SCHEDULES,
+    PERMISSIONS.SYNC_GOOGLE_SHEETS,
   ],
   DUTY_OFFICER: [
     PERMISSIONS.CREATE_SCHEDULE,
@@ -89,4 +91,8 @@ export const getRoleColor = (role: UserRole): string => {
     RESERVIST: 'bg-gray-100 text-gray-800',
   };
   return roleColors[role];
+};
+
+export const canSyncGoogleSheets = (user: User | null): boolean => {
+  return hasPermission(user, PERMISSIONS.SYNC_GOOGLE_SHEETS);
 };

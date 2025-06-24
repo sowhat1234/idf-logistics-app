@@ -51,6 +51,9 @@ export interface Schedule {
   assignedAt: string;
   notes?: string;
   isOverride: boolean;
+  lastSyncedAt?: string;
+  syncConflict?: boolean;
+  syncSource?: 'local' | 'sheets';
 }
 
 export interface Availability {
@@ -102,6 +105,23 @@ export interface DashboardStats {
   pendingRequests: number;
   conflicts: number;
   upcomingDuties: number;
+}
+
+export interface GoogleSheetsConfig {
+  sheetId?: string;
+  apiKey?: string;
+  accessToken?: string;
+  functionsUrl?: string;
+  autoSyncInterval?: number;
+}
+
+export interface GoogleSheetsSyncResult {
+  success: boolean;
+  message: string;
+  conflictsDetected?: number;
+  recordsUpdated?: number;
+  sheetUrl?: string;
+  lastSyncedAt?: string;
 }
 
 export interface CalendarEvent {

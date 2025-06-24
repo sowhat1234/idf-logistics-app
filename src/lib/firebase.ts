@@ -98,8 +98,8 @@ const initializeFirebase = (): {
       // Only connect to emulators if not already connected
       try {
         // Auth emulator
-        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-        console.log('🔥 Connected to Firebase Auth emulator');
+          connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+          console.log('🔥 Connected to Firebase Auth emulator');
       } catch (error) {
         // Emulator might not be running or already connected
         console.log('ℹ️ Firebase Auth emulator not available or already connected');
@@ -107,8 +107,8 @@ const initializeFirebase = (): {
 
       try {
         // Firestore emulator
-        connectFirestoreEmulator(db, 'localhost', 8080);
-        console.log('🔥 Connected to Firestore emulator');
+          connectFirestoreEmulator(db, 'localhost', 8080);
+          console.log('🔥 Connected to Firestore emulator');
       } catch (error) {
         // Emulator might not be running or already connected
         console.log('ℹ️ Firestore emulator not available or already connected');

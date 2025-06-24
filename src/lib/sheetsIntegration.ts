@@ -7,6 +7,17 @@ export interface GoogleSheetsConfig {
   sheetId?: string;
   apiKey?: string;
   accessToken?: string;
+  functionsUrl?: string;
+  autoSyncInterval?: number;
+}
+
+export interface GoogleSheetsSyncResult {
+  success: boolean;
+  message: string;
+  conflictsDetected?: number;
+  recordsUpdated?: number;
+  sheetUrl?: string;
+  lastSyncedAt?: string;
 }
 
 export interface ExcelScheduleRow {
@@ -27,6 +38,8 @@ export interface ExcelScheduleRow {
 
 class SheetsIntegrationService {
   private config: GoogleSheetsConfig = {};
+  private autoSyncInterval: NodeJS.Timeout | null = null;
+  private lastSyncedAt: string | null = null;
 
   // Configure Google Sheets integration
   setConfig(config: GoogleSheetsConfig) {
@@ -404,36 +417,66 @@ class SheetsIntegrationService {
     saveAs(blob, 'idf-schedule-import-template.xlsx');
   }
 
-  // Simulate Google Sheets integration (would be real API calls in production)
-  async syncWithGoogleSheets(schedules: Schedule[], users: User[], dutyTypes: DutyType[]): Promise<{
-    success: boolean;
-    message: string;
-    sheetUrl?: string;
-  }> {
+  // Real Google Sheets integration via Cloud Functions
+  async syncWithGoogleSheets(schedules: Schedule[], users: User[], dutyTypes: DutyType[]): Promise<GoogleSheetsSyncResult> {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // In a real implementation, this would:
-      // 1. Create or update a Google Sheet
-      // 2. Format data for Google Sheets API
-      // 3. Handle authentication
-      // 4. Sync data bidirectionally
-
       const config = this.getConfig();
-      if (!config.sheetId && !config.apiKey) {
-        throw new Error('Google Sheets not configured. Please set up integration in Settings.');
+      
+      // Validate configuration
+      if (!config.functionsUrl) {
+        throw new Error('Cloud Functions URL not configured. Please set up integration in Settings.');
       }
 
-      // Simulate successful sync
-      const sheetUrl = `https://docs.google.com/spreadsheets/d/${config.sheetId || 'demo-sheet-id'}/edit`;
-      
-      return {
-        success: true,
-        message: `Successfully synced ${schedules.length} schedules to Google Sheets`,
-        sheetUrl,
+      if (!config.sheetId) {
+        throw new Error('Google Sheet ID not configured. Please set up integration in Settings.');
+      }
+
+      // Prepare request payload
+      const payload = {
+        schedules,
+        users,
+        dutyTypes,
       };
+
+      // Make HTTP request to Cloud Functions endpoint
+      const response = await fetch(`${config.functionsUrl}/syncToSheet`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Update last synced timestamp
+      this.lastSyncedAt = new Date().toISOString();
+      localStorage.setItem('idf_last_synced_at', this.lastSyncedAt);
+
+      return {
+        success: result.success,
+        message: result.message,
+        recordsUpdated: result.recordsUpdated,
+        sheetUrl: result.sheetUrl,
+        lastSyncedAt: this.lastSyncedAt,
+      };
+
     } catch (error) {
+      console.error('Error syncing with Google Sheets:', error);
+      
+      // Handle specific error types
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        return {
+          success: false,
+          message: 'Network error: Unable to connect to sync service. Please check your internet connection.',
+        };
+      }
+
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to sync with Google Sheets',
@@ -441,16 +484,302 @@ class SheetsIntegrationService {
     }
   }
 
-  // Auto-sync schedules (would run periodically)
+  // Pull latest schedules from Google Sheets
+  async pullFromGoogleSheets(users: User[], dutyTypes: DutyType[]): Promise<{
+    success: boolean;
+    schedules: Omit<Schedule, 'id'>[];
+    message: string;
+    conflictsDetected?: number;
+    lastSyncedAt?: string;
+  }> {
+    try {
+      const config = this.getConfig();
+      
+      // Validate configuration
+      if (!config.functionsUrl) {
+        throw new Error('Cloud Functions URL not configured. Please set up integration in Settings.');
+      }
+
+      if (!config.sheetId) {
+        throw new Error('Google Sheet ID not configured. Please set up integration in Settings.');
+      }
+
+      // Prepare query parameters
+      const params = new URLSearchParams({
+        users: JSON.stringify(users),
+        dutyTypes: JSON.stringify(dutyTypes),
+      });
+
+      // Make HTTP request to Cloud Functions endpoint
+      const response = await fetch(`${config.functionsUrl}/pullSchedules?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Update last synced timestamp
+      this.lastSyncedAt = result.lastSyncedAt || new Date().toISOString();
+      localStorage.setItem('idf_last_synced_at', this.lastSyncedAt);
+
+      // Process schedules and detect conflicts
+      const processedSchedules = result.schedules.map((schedule: any) => ({
+        ...schedule,
+        lastSyncedAt: this.lastSyncedAt,
+        syncSource: 'sheets' as const,
+      }));
+
+      return {
+        success: result.success,
+        schedules: processedSchedules,
+        message: result.message,
+        lastSyncedAt: this.lastSyncedAt,
+      };
+
+    } catch (error) {
+      console.error('Error pulling from Google Sheets:', error);
+      
+      // Handle specific error types
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        return {
+          success: false,
+          schedules: [],
+          message: 'Network error: Unable to connect to sync service. Please check your internet connection.',
+        };
+      }
+
+      return {
+        success: false,
+        schedules: [],
+        message: error instanceof Error ? error.message : 'Failed to pull from Google Sheets',
+      };
+    }
+  }
+
+  // Detect conflicts between local and remote schedules
+  detectConflicts(localSchedules: Schedule[], remoteSchedules: Omit<Schedule, 'id'>[]): {
+    conflicts: Array<{
+      local: Schedule;
+      remote: Omit<Schedule, 'id'>;
+      reason: string;
+    }>;
+    merged: Schedule[];
+  } {
+    const conflicts: Array<{
+      local: Schedule;
+      remote: Omit<Schedule, 'id'>;
+      reason: string;
+    }> = [];
+    const merged: Schedule[] = [...localSchedules];
+
+    // Simple conflict detection based on user, duty type, and time overlap
+    for (const remoteSchedule of remoteSchedules) {
+      const conflictingLocal = localSchedules.find(local => {
+        // Check for same user and overlapping time
+        if (local.userId !== remoteSchedule.userId) return false;
+        
+        const localStart = new Date(local.startTime);
+        const localEnd = new Date(local.endTime);
+        const remoteStart = new Date(remoteSchedule.startTime);
+        const remoteEnd = new Date(remoteSchedule.endTime);
+
+        // Check for time overlap
+        return (localStart < remoteEnd && localEnd > remoteStart);
+      });
+
+      if (conflictingLocal) {
+        // Check if this is a real conflict (different data) or just a sync
+        const localSyncTime = conflictingLocal.lastSyncedAt ? new Date(conflictingLocal.lastSyncedAt) : new Date(0);
+        const remoteSyncTime = remoteSchedule.lastSyncedAt ? new Date(remoteSchedule.lastSyncedAt) : new Date();
+
+        if (
+          conflictingLocal.dutyTypeId !== remoteSchedule.dutyTypeId ||
+          conflictingLocal.status !== remoteSchedule.status ||
+          Math.abs(new Date(conflictingLocal.startTime).getTime() - new Date(remoteSchedule.startTime).getTime()) > 60000 || // 1 minute tolerance
+          Math.abs(new Date(conflictingLocal.endTime).getTime() - new Date(remoteSchedule.endTime).getTime()) > 60000
+        ) {
+          conflicts.push({
+            local: conflictingLocal,
+            remote: remoteSchedule,
+            reason: remoteSyncTime > localSyncTime ? 'Remote schedule is newer' : 'Local schedule is newer',
+          });
+
+          // Use the newer version (based on sync timestamp)
+          if (remoteSyncTime > localSyncTime) {
+            const index = merged.findIndex(s => s.id === conflictingLocal.id);
+            if (index !== -1) {
+              merged[index] = {
+                ...conflictingLocal,
+                ...remoteSchedule,
+                id: conflictingLocal.id,
+                syncConflict: true,
+                lastSyncedAt: this.lastSyncedAt || new Date().toISOString(),
+              };
+            }
+          } else {
+            // Mark local schedule as having a conflict but keep local version
+            const index = merged.findIndex(s => s.id === conflictingLocal.id);
+            if (index !== -1) {
+              merged[index] = {
+                ...conflictingLocal,
+                syncConflict: true,
+              };
+            }
+          }
+        }
+      } else {
+        // No conflict, add remote schedule as new
+        merged.push({
+          ...remoteSchedule,
+          id: `remote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          lastSyncedAt: this.lastSyncedAt || new Date().toISOString(),
+          syncSource: 'sheets',
+        });
+      }
+    }
+
+    return { conflicts, merged };
+  }
+
+  // Real auto-sync implementation with polling
   async enableAutoSync(intervalMinutes: number = 30): Promise<void> {
-    // In a real implementation, this would set up periodic sync
+    // Clear existing interval if any
+    if (this.autoSyncInterval) {
+      clearInterval(this.autoSyncInterval);
+    }
+
+    // Store configuration
     localStorage.setItem('idf_auto_sync_interval', intervalMinutes.toString());
+    
+    // Set up polling interval
+    this.autoSyncInterval = setInterval(async () => {
+      try {
+        // Only sync if page is visible to avoid unnecessary API calls
+        if (document.hidden) {
+          return;
+        }
+
+        console.log('Running auto-sync...');
+        
+        // Get current data (this would typically come from the app state)
+        const [users, dutyTypes] = await Promise.all([
+          apiService.fetchUsers(),
+          apiService.fetchDutyTypes(),
+        ]);
+
+        // Pull latest data from Google Sheets
+        const result = await this.pullFromGoogleSheets(users, dutyTypes);
+        
+        if (result.success) {
+          console.log(`Auto-sync completed: ${result.schedules.length} schedules pulled`);
+          
+          // Emit custom event for the app to handle the new data
+          const event = new CustomEvent('sheetsAutoSync', {
+            detail: {
+              schedules: result.schedules,
+              conflictsDetected: result.conflictsDetected,
+              lastSyncedAt: result.lastSyncedAt,
+            },
+          });
+          window.dispatchEvent(event);
+        } else {
+          console.warn('Auto-sync failed:', result.message);
+        }
+      } catch (error) {
+        console.error('Auto-sync error:', error);
+      }
+    }, intervalMinutes * 60 * 1000); // Convert minutes to milliseconds
+
     console.log(`Auto-sync enabled for every ${intervalMinutes} minutes`);
+
+    // Handle page visibility changes to pause/resume sync
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Page hidden, auto-sync paused');
+      } else {
+        console.log('Page visible, auto-sync resumed');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Store the event listener for cleanup
+    (this as any)._visibilityChangeHandler = handleVisibilityChange;
   }
 
   async disableAutoSync(): Promise<void> {
+    // Clear interval
+    if (this.autoSyncInterval) {
+      clearInterval(this.autoSyncInterval);
+      this.autoSyncInterval = null;
+    }
+
+    // Remove configuration
     localStorage.removeItem('idf_auto_sync_interval');
+
+    // Remove event listener
+    if ((this as any)._visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', (this as any)._visibilityChangeHandler);
+      delete (this as any)._visibilityChangeHandler;
+    }
+
     console.log('Auto-sync disabled');
+  }
+
+  // Get auto-sync status
+  getAutoSyncStatus(): {
+    enabled: boolean;
+    intervalMinutes?: number;
+    lastSyncedAt?: string;
+  } {
+    const intervalStr = localStorage.getItem('idf_auto_sync_interval');
+    const lastSynced = localStorage.getItem('idf_last_synced_at');
+    
+    return {
+      enabled: intervalStr !== null && this.autoSyncInterval !== null,
+      intervalMinutes: intervalStr ? parseInt(intervalStr) : undefined,
+      lastSyncedAt: lastSynced || undefined,
+    };
+  }
+
+  // Validate configuration
+  validateConfig(config: GoogleSheetsConfig): {
+    valid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+
+    if (!config.functionsUrl) {
+      errors.push('Cloud Functions URL is required');
+    } else {
+      try {
+        new URL(config.functionsUrl);
+      } catch {
+        errors.push('Cloud Functions URL must be a valid URL');
+      }
+    }
+
+    if (!config.sheetId) {
+      errors.push('Google Sheet ID is required');
+    } else if (!/^[a-zA-Z0-9-_]+$/.test(config.sheetId)) {
+      errors.push('Google Sheet ID format is invalid');
+    }
+
+    if (config.autoSyncInterval && (config.autoSyncInterval < 5 || config.autoSyncInterval > 1440)) {
+      errors.push('Auto-sync interval must be between 5 and 1440 minutes');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    };
   }
 }
 
